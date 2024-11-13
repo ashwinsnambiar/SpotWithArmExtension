@@ -19,6 +19,7 @@ from omni.isaac.motion_generation.motion_policy_interface import MotionPolicy
 from omni.isaac.motion_generation.articulation_motion_policy import ArticulationMotionPolicy
 from omni.isaac.core.materials.physics_material import PhysicsMaterial
 from omni.physx.scripts import utils
+from omni.isaac.core import SimulationContext
 
 import time
 
@@ -340,7 +341,6 @@ class Spot(Robot):
             # Get the prim for each joint
             joint_path = self.find_prim_path_by_name(joint_path)
             joint_prim = get_prim_at_path(joint_path)
-            print("329", joint_prim)
             # Set the joint position
             joint_prim.GetAttribute("drive:angular:physics:targetPosition").Set(target_positions[i])
 
@@ -505,6 +505,8 @@ class SpotWithArm(BaseSample):
         self.spot.initialize()
         self._world = self.get_world()
         self._world.add_physics_callback("sim_step", callback_fn=self.physics_step)
+        self.sim_context = SimulationContext.instance()
+        self.start_time = self.sim_context.current_time
 
         # print(self.spot.get_current_arm_positions())
         # # target_pos = [0,0,0,0,0,0]
@@ -514,11 +516,17 @@ class SpotWithArm(BaseSample):
         # spot_motion = SpotArticulationPolicy(robot_articulation=self.spot,
         #                                      motion_policy=motion,)
         
-        time.sleep(10)
+        
         target_pos = [10,0,0,0,0,0]
         self.spot.move_arm_joints(target_positions=target_pos)
 
         return
+    
+    async def setup_post_reset(self):
+        self.start_time = self.sim_context.current_time
+        target_pos = [10,0,0,0,0,0]
+        self.spot.move_arm_joints(target_positions=target_pos)
+        return await super().setup_post_reset()
     
     # def move_arm(self, target_positions):
     #     time.sleep(10)
@@ -530,4 +538,10 @@ class SpotWithArm(BaseSample):
         # if current_observations["task_event"] == 0:
         #     target_pos = [10,0,0,0,0,0]
         #     self.spot.move_arm_joints(target_pos)
+        curr_time = self.sim_context.current_time        
+        if curr_time - self.start_time >= 2:
+            target_pos = [-10,0,0,0,0,0]
+            self.spot.move_arm_joints(target_positions=target_pos)
+            target_pos = [-10,0,0,0,0,-90]
+            self.spot.move_arm_joints(target_positions=target_pos)
         pass
